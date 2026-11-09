@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Neon Frontier — Battle Royale</title>
+<style>
+:root{--bg:#070b14;--panel:#101827eF;--line:#ffffff18;--accent:#6ee7ff;--gold:#ffd166;--danger:#ff5d73;--ok:#58e68b}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:#fff;font-family:Inter,Arial,sans-serif}
+button,input{font:inherit}button{cursor:pointer;border:0;color:#fff}
+#game{position:fixed;inset:0;width:100%;height:100%;background:#0b1420}
+.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;background:#02050bb8;z-index:10}
+.panel{width:min(960px,96vw);max-height:92vh;overflow:auto;background:linear-gradient(145deg,#111b2cf7,#09101cf7);border:1px solid var(--line);border-radius:24px;padding:24px;box-shadow:0 30px 100px #000b}
+.logo{font-size:clamp(30px,6vw,60px);font-weight:900;letter-spacing:3px;background:linear-gradient(90deg,#6ee7ff,#a78bfa,#ffcf70);-webkit-background-clip:text;color:transparent}
+.sub{opacity:.7;margin:5px 0 20px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.card{background:#ffffff08;border:1px solid var(--line);border-radius:16px;padding:15px}
+.btn{padding:12px 16px;border-radius:12px;background:linear-gradient(135deg,#2563eb,#7c3aed);font-weight:800}
+.btn.alt{background:#ffffff10}.btn.red{background:#c93552}.btn.gold{background:#9a6b00}
+.row{display:flex;gap:9px;flex-wrap:wrap}.bar{height:8px;background:#ffffff12;border-radius:99px;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,#58e68b,#6ee7ff);width:100%}
+.hud{position:fixed;inset:0;pointer-events:none;z-index:4}.top{display:flex;justify-content:space-between;gap:8px;padding:12px}.pill{background:#0b1322dd;border:1px solid var(--line);border-radius:14px;padding:9px 12px;backdrop-filter:blur(10px)}
+#rightHud{display:flex;gap:7px}.cross{position:fixed;left:50%;top:50%;width:24px;height:24px;transform:translate(-50%,-50%);opacity:.7}.cross:before,.cross:after{content:"";position:absolute;background:#fff}.cross:before{left:11px;top:0;width:2px;height:24px}.cross:after{top:11px;left:0;height:2px;width:24px}
+.mobile{position:fixed;left:0;right:0;bottom:15px;display:flex;justify-content:space-between;padding:0 18px;pointer-events:auto}.pad{display:grid;grid-template-columns:52px 52px 52px;gap:5px}.ctrl,.fire{width:52px;height:52px;border-radius:50%;background:#111b2ddd;border:1px solid #ffffff25}.fire{width:78px;height:78px;background:#d83f5a;font-weight:900}
+#toast{position:fixed;left:50%;bottom:115px;transform:translateX(-50%);z-index:20;background:#101827ee;border:1px solid var(--line);padding:10px 15px;border-radius:12px;display:none}
+.item{display:flex;justify-content:space-between;align-items:center;gap:8px}.item b{font-size:17px}.tag{font-size:11px;opacity:.7;border:1px solid var(--line);padding:4px 7px;border-radius:99px}
+.shopGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.weapon{min-height:150px}.weapon .emoji{font-size:42px}
+#adminPanel{display:none}.close{float:right;border-radius:10px;background:#ffffff10;padding:8px 12px}
+input{background:#070d18;color:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;width:100%}
+.small{font-size:12px;opacity:.65}
+@media(min-width:800px){.mobile{display:none}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div class="hud">
+  <div class="top">
+    <div class="pill">❤️ <b id="hp">100</b> <span style="opacity:.5">|</span> <span id="armor">50</span> 🛡️</div>
+    <div id="rightHud">
+      <div class="pill">💎 <b id="diamonds">1200</b></div>
+      <div class="pill">🪙 <b id="coins">2500</b></div>
+      <div class="pill">🎯 <b id="kills">0</b></div>
+    </div>
+  </div>
+  <div class="cross"></div>
+  <div class="mobile">
+    <div class="pad">
+      <span></span><button class="ctrl" data-key="w">▲</button><span></span>
+      <button class="ctrl" data-key="a">◀</button><button class="ctrl" data-key="s">▼</button><button class="ctrl" data-key="d">▶</button>
+    </div>
+    <button class="fire" id="fire">FIRE</button>
+  </div>
+</div>
+<div id="toast"></div>
+
+<div class="overlay" id="lobby">
+ <div class="panel">
+  <div class="logo">NEON FRONTIER</div>
+  <div class="sub">Original browser battle-royale shooter • offline single-player</div>
+  <div class="grid">
+   <div class="card"><div class="small">PLAYER</div><h2 id="playerName">Ranger</h2><div class="bar"><div class="fill" id="xpBar" style="width:42%"></div></div><p class="small">Level 7 • XP 420/1000</p></div>
+   <div class="card"><div class="small">LOADOUT</div><h3 id="loadoutName">Pulse Rifle</h3><p class="small" id="ammoLobby">Ammo 30 / 120</p></div>
+   <div class="card"><div class="small">MODE</div><h3>Solo Survival</h3><p class="small">Defeat waves of bots and survive.</p></div>
+  </div>
+  <div class="row" style="margin-top:16px">
+   <button class="btn" id="play">▶ PLAY</button>
+   <button class="btn alt" id="inventory">🎒 INVENTORY</button>
+   <button class="btn alt" id="shop">🛒 SHOP</button>
+   <button class="btn alt" id="admin">⚙ ADMIN</button>
+  </div>
+  <p class="small">PC: WASD + mouse/Space. Mobile: tombol arah + FIRE. Klik canvas untuk menembak ke arah kursor.</p>
+ </div>
+</div>
+
+<div class="overlay" id="inventoryPanel" style="display:none">
+ <div class="panel"><button class="close" data-close="inventoryPanel">✕</button><h2>🎒 Inventory</h2>
+  <div class="grid">
+   <div class="card"><h3>🔫 <span id="invWeapon">Pulse Rifle</span></h3><p>Damage 22 • Fire rate 8/s</p><span class="tag">EQUIPPED</span></div>
+   <div class="card"><h3>🛡️ Armor</h3><p>Protection 50</p><span class="tag">EQUIPPED</span></div>
+   <div class="card"><h3>💊 Med Kit ×3</h3><button class="btn" id="heal">USE</button></div>
+   <div class="card"><h3>💣 Shock Grenade ×2</h3><button class="btn alt" id="grenade">THROW</button></div>
+  </div>
+ </div>
+</div>
+
+<div class="overlay" id="shopPanel" style="display:none">
+ <div class="panel"><button class="close" data-close="shopPanel">✕</button><h2>🛒 Armory Shop</h2><p class="small">Gunakan koin/diamond game lokal.</p>
+  <div class="shopGrid">
+   <div class="card weapon"><div class="emoji">🔫</div><h3>Pulse Rifle</h3><p>Balanced • 22 dmg</p><button class="btn" onclick="buy('rifle',800)">800 🪙</button></div>
+   <div class="card weapon"><div class="emoji">⚡</div><h3>Volt SMG</h3><p>Fast • 13 dmg</p><button class="btn" onclick="buy('smg',1200)">1200 🪙</button></div>
+   <div class="card weapon"><div class="emoji">💥</div><h3>Nova Cannon</h3><p>Heavy • 55 dmg</p><button class="btn gold" onclick="buy('cannon',25)">25 💎</button></div>
+   <div class="card weapon"><div class="emoji">🛡️</div><h3>Armor Pack</h3><p>+50 armor</p><button class="btn alt" onclick="buy('armor',600)">600 🪙</button></div>
+  </div>
+ </div>
+</div>
+
+<div class="overlay" id="adminPanel">
+ <div class="panel"><button class="close" data-close="adminPanel">✕</button><h2>⚙ Local Admin Console</h2>
+  <p class="small">Admin ini hanya memodifikasi state game di browser ini.</p>
+  <div class="grid">
+   <div class="card"><b>Tambah Coins</b><input id="coinAdd" type="number" value="500"><button class="btn" style="margin-top:8px" id="addCoins">ADD</button></div>
+   <div class="card"><b>Tambah Diamonds</b><input id="diaAdd" type="number" value="500"><button class="btn" style="margin-top:8px" id="addDias">ADD</button></div>
+   <div class="card"><b>Spawn Bots</b><button class="btn" style="margin-top:8px" id="spawn10">SPAWN 10</button></div>
+   <div class="card"><b>God Mode</b><button class="btn alt" style="margin-top:8px" id="god">TOGGLE</button><p class="small" id="godState">OFF</p></div>
+  </div>
+  <div class="row" style="margin-top:15px"><button class="btn red" id="reset">RESET SAVE</button></div>
+ </div>
+</div>
+
+<script>
+const c=document.getElementById('game'),ctx=c.getContext('2d');let W,H;
+const S={hp:100,armor:50,coins:2500,diamonds:1200,kills:0,weapon:'rifle',god:false,ammo:30,maxAmmo:120,med:3,grenades:2};
+const keys={},bullets=[],enemies=[],particles=[];
+let running=false,mouse={x:innerWidth/2,y:innerHeight/2},last=0,spawnClock=0,shake=0;
+const $=id=>document.getElementById(id);
+function resize(){c.width=innerWidth*devicePixelRatio;c.height=innerHeight*devicePixelRatio;ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);W=innerWidth;H=innerHeight}addEventListener('resize',resize);resize();
+function hud(){$('hp').textContent=Math.max(0,Math.round(S.hp));$('armor').textContent=Math.max(0,Math.round(S.armor));$('coins').textContent=S.coins;$('diamonds').textContent=S.diamonds;$('kills').textContent=S.kills;$('loadoutName').textContent={rifle:'Pulse Rifle',smg:'Volt SMG',cannon:'Nova Cannon'}[S.weapon];$('invWeapon').textContent=$('loadoutName').textContent}
+function toast(t){$('toast').textContent=t;$('toast').style.display='block';clearTimeout(window.tt);window.tt=setTimeout(()=>$('toast').style.display='none',1400)}
+function closeAll(){document.querySelectorAll('.overlay').forEach(x=>x.style.display='none')}
+function open(id){$(id).style.display='flex'}
+function spawn(){let side=Math.floor(Math.random()*4),x=side===0?-30:side===1?W+30:Math.random()*W,y=side===2?-30:side===3?H+30:Math.random()*H;enemies.push({x,y,r:17,hp:2+Math.floor(Math.random()*2),speed:.7+Math.random()*.8})}
+function boom(x,y,n=8){for(let i=0;i<n;i++){let a=Math.random()*Math.PI*2,s=1+Math.random()*4;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1})}}
+function shoot(){if(!running||S.ammo<=0){if(S.ammo<=0)toast('Ammo habis');return}S.ammo--;let a=Math.atan2(mouse.y-H/2,mouse.x-W/2);let sp=S.weapon==='cannon'?12:10;bullets.push({x:W/2,y:H/2,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,damage:S.weapon==='cannon'?55:S.weapon==='smg'?13:22});shake=2}
+function buy(type,cost){if(type==='cannon'){if(S.diamonds<cost)return toast('Diamond tidak cukup');S.diamonds-=cost}else{if(S.coins<cost)return toast('Coin tidak cukup');S.coins-=cost}S.weapon=type;S.ammo=30;toast('Item dibeli & dipasang');hud()}
+function damage(v){if(S.god)return;let a=Math.min(S.armor,v*.55),h=v-a;S.armor-=a;S.hp-=h;if(S.hp<=0){S.hp=0;running=false;toast('Kamu kalah! Kembali ke lobby untuk bermain lagi.')}hud()}
+function reset(){Object.assign(S,{hp:100,armor:50,coins:2500,diamonds:1200,kills:0,weapon:'rifle',god:false,ammo:30,med:3,grenades:2});bullets.length=0;enemies.length=0;particles.length=0;hud()}
+function update(dt){
+ let dx=(keys.d?1:0)-(keys.a?1:0),dy=(keys.s?1:0)-(keys.w?1:0),l=Math.hypot(dx,dy)||1;let speed=260;
+ if(dx||dy){player.x=Math.max(25,Math.min(W-25,player.x+dx/l*speed*dt));player.y=Math.max(75,Math.min(H-25,player.y+dy/l*speed*dt))}
+ spawnClock+=dt;if(spawnClock>1.2){spawnClock=0;if(enemies.length<14)spawn()}
+ for(let i=bullets.length-1;i>=0;i--){let b=bullets[i];b.x+=b.vx*dt*60;b.y+=b.vy*dt*60;if(b.x<-30||b.x>W+30||b.y<-30||b.y>H+30){bullets.splice(i,1);continue}for(let j=enemies.length-1;j>=0;j--){let e=enemies[j];if(Math.hypot(b.x-e.x,b.y-e.y)<e.r+5){e.hp-=b.damage/22;bullets.splice(i,1);boom(e.x,e.y,5);if(e.hp<=0){S.kills++;S.coins+=20;enemies.splice(j,1)}break}}}
+ for(const e of enemies){let a=Math.atan2(player.y-e.y,player.x-e.x);e.x+=Math.cos(a)*e.speed*60*dt;e.y+=Math.sin(a)*e.speed*60*dt;if(Math.hypot(e.x-player.x,e.y-player.y)<e.r+18){damage(10*dt)}}
+ for(let i=particles.length-1;i>=0;i--){let p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life-=dt*2;if(p.life<=0)particles.splice(i,1)}
+ hud()
+}
+const player={x:W/2,y:H/2};
+function draw(){
+ ctx.clearRect(0,0,W,H);ctx.fillStyle='#10253a';ctx.fillRect(0,0,W,H);
+ ctx.strokeStyle='#1d4057';ctx.lineWidth=1;for(let x=-((player.x%55));x<W;x+=55){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=-((player.y%55));y<H;y+=55){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ // zone
+ ctx.strokeStyle='#6ee7ff55';ctx.lineWidth=4;ctx.beginPath();ctx.arc(W/2,H/2,Math.min(W,H)*.38,0,Math.PI*2);ctx.stroke();
+ // player
+ ctx.save();ctx.translate(player.x,player.y);let ang=Math.atan2(mouse.y-player.y,mouse.x-player.x);ctx.rotate(ang);ctx.fillStyle='#6ee7ff';ctx.beginPath();ctx.arc(0,0,19,0,Math.PI*2);ctx.fill();ctx.fillStyle='#dbeafe';ctx.fillRect(8,-4,25,8);ctx.restore();
+ for(const e of enemies){ctx.fillStyle='#ff5d73';ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#07101a';ctx.fillRect(e.x-8,e.y-3,16,5)}
+ for(const b of bullets){ctx.fillStyle='#ffd166';ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill()}
+ for(const p of particles){ctx.globalAlpha=p.life;ctx.fillStyle='#ffd166';ctx.fillRect(p.x,p.y,4,4)}ctx.globalAlpha=1;
+ ctx.fillStyle='#ffffffaa';ctx.font='12px Arial';ctx.fillText('WASD / arah • klik atau FIRE untuk menembak',14,H-18);
+}
+function loop(t){let dt=Math.min(.033,(t-last)/1000||0);last=t;if(running){update(dt);draw()}requestAnimationFrame(loop)}requestAnimationFrame(loop);
+
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.code==='Space')shoot()});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+c.addEventListener('pointermove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});c.addEventListener('pointerdown',e=>{mouse.x=e.clientX;mouse.y=e.clientY;shoot()});
+$('fire').onpointerdown=shoot;
+document.querySelectorAll('.ctrl').forEach(b=>{b.onpointerdown=()=>keys[b.dataset.key]=true;b.onpointerup=()=>keys[b.dataset.key]=false;b.onpointerleave=()=>keys[b.dataset.key]=false});
+$('play').onclick=()=>{closeAll();running=true;player.x=W/2;player.y=H/2;toast('Drop dimulai!')};
+$('inventory').onclick=()=>open('inventoryPanel');$('shop').onclick=()=>open('shopPanel');$('admin').onclick=()=>open('adminPanel');
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.dataset.close).style.display='none');
+$('heal').onclick=()=>{if(S.med>0){S.med--;S.hp=Math.min(100,S.hp+45);toast('Med kit digunakan')}else toast('Med kit habis');hud()};
+$('grenade').onclick=()=>{if(S.grenades>0){S.grenades--;enemies.splice(0,Math.min(4,enemies.length));boom(player.x,player.y,20);toast('Shock grenade!')}else toast('Grenade habis')};
+$('addCoins').onclick=()=>{S.coins+=Math.max(0,+$('coinAdd').value||0);hud();toast('Coins ditambahkan')};
+$('addDias').onclick=()=>{S.diamonds+=Math.max(0,+$('diaAdd').value||0);hud();toast('Diamonds ditambahkan')};
+$('spawn10').onclick=()=>{for(let i=0;i<10;i++)spawn();toast('10 bot di-spawn')};
+$('god').onclick=()=>{S.god=!S.god;$('godState').textContent=S.god?'ON':'OFF';toast('God Mode '+(S.god?'ON':'OFF'))};
+$('reset').onclick=()=>{reset();toast('Save lokal direset')};
+hud();
+</script>
+</body>
+</html>
